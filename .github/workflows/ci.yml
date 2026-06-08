@@ -1,3 +1,4 @@
+```yaml
 name: Build & Push Docker Images to Dockerhub
 
 on:
@@ -5,158 +6,155 @@ on:
     branches:
       - main
 
-env:                      
-  FRONTEND_IMAGE_NAME: wanderblog-frontend       # Change to your ECR repo name
-  BACKEND_IMAGE_NAME: wanderblog-backend         # Change to your ECR repo name
+permissions:
+  contents: write
+
+env:
+  FRONTEND_IMAGE_NAME: wanderblog-frontend
+  BACKEND_IMAGE_NAME: wanderblog-backend
 
 jobs:
-  # ─────────────────────────────────────────
-  # DETECT CHANGES
-  # ─────────────────────────────────────────
+
+# ==========================================
+# Detect Changes
+# ==========================================
+
   changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
+
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Check for frontend changes
-        uses: dorny/paths-filter@v4
+      - name: Detect files
         id: filter
+        uses: dorny/paths-filter@v4
         with:
           filters: |
             frontend:
               - 'frontend/**'
+
             backend:
               - 'server/**'
 
-  # ─────────────────────────────────────────
-  # FRONTEND
-  # ─────────────────────────────────────────
+# ==========================================
+# FRONTEND
+# ==========================================
+
   frontend:
-    name: Frontend — Test, Build & Push
+    name: Frontend — Test Build Push
     runs-on: ubuntu-latest
     needs: changes
- 
 
-    defaults:
-      run:
-        working-directory: frontend           # Change to your frontend directory
+    if: needs.changes.outputs.frontend == 'true'
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login Docker Hub
+        timeout-minutes: 5
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Get latest image tag
-        id: get_tag
+      - name: Generate Tag
+        id: tag
         run: |
-          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}/tags/?ordering=last_updated" \
-              | jq -r '.results[].name' \
-              | grep -E '^v[0-9]+$' \
-              | sort -V | tail -1)
+          echo "next_tag=v${{ github.run_number }}" >> $GITHUB_OUTPUT
 
-            if [ -z "$LATEST" ]; then
-              NEXT_TAG="v1"
-            else
-              VERSION=${LATEST#v}
-              NEXT_TAG="v$((VERSION + 1))"
-            fi
-
-            echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
-
-      - name: Build and push
-        uses: docker/build-push-action@v5
+      - name: Build and Push
+        uses: docker/build-push-action@v6
         with:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.get_tag.outputs.next_tag }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
 
-      - name: Output image URI
+      - name: Update Frontend Manifest
         run: |
-          echo "Frontend image: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.get_tag.outputs.next_tag }}"
+          sed -i \
+          "s|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}|" \
+          kubernetes-manifests/frontend.yml
 
-      - name: Update K8s manifest with new frontend image tag
-        env:
-          IMAGE_TAG: ${{ steps.get_tag.outputs.next_tag }}
-        run: |
-          sed -i "s|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:$IMAGE_TAG|g" \
-            ../kubernetes-manifests/frontend.yml   # Change to your manifest path
-
-      - name: Commit and push updated frontend manifest
+      - name: Commit Frontend Manifest
         run: |
           git config user.name "sandeshjamdar20"
-          git config user.email "gaurishirkande11111@gmail.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git add ../kubernetes-manifests/frontend.yml
-          git diff --cached --quiet || git commit -m "ci: update frontend image to ${{ steps.get_tag.outputs.next_tag }}"
+          git config user.email "sandeshjamdar51@gmail.com"
+
+          git add .
+
+          git diff --cached --quiet || \
+          git commit -m "update frontend image"
+
           git push
 
-   # ─────────────────────────────────────────
-  # BACKEND
-  # ─────────────────────────────────────────
+# ==========================================
+# BACKEND
+# ==========================================
+
   backend:
-    name: Backend — Test, Build & Push
+    name: Backend — Test Build Push
     runs-on: ubuntu-latest
     needs: changes
 
-    defaults:
-      run:
-        working-directory: server
+    if: needs.changes.outputs.backend == 'true'
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login Docker Hub
+        timeout-minutes: 5
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      - name: Get latest image tag
-        id: get_tag
+
+      - name: Generate Tag
+        id: tag
         run: |
-          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}/tags/?ordering=last_updated" \
-              | jq -r '.results[].name' \
-              | grep -E '^v[0-9]+$' \
-              | sort -V | tail -1)
-            if [ -z "$LATEST" ]; then
-              NEXT_TAG="v1"
-            else
-              VERSION=${LATEST#v}
-              NEXT_TAG="v$((VERSION + 1))"
-            fi
-            echo "next_tag=$NEXT_TAG" >> $GITHUB_OUTPUT
-      - name: Build and push
-        uses: docker/build-push-action@v5
+          echo "next_tag=v${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
         with:
           context: ./server
           file: ./server/Dockerfile
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.get_tag.outputs.next_tag }}
-      - name: Output image URI
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
+
+      - name: Update Backend Manifest
         run: |
-          echo "Backend image: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.get_tag.outputs.next_tag }}"
-      - name: Update K8s manifest with new backend image tag
-        env:
-          IMAGE_TAG: ${{ steps.get_tag.outputs.next_tag }}
-        run: |
-          sed -i "s|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:$IMAGE_TAG|g" \
-            ../kubernetes-manifests/backend.yml   # Change to your manifest path
-      - name: Commit and push updated backend manifest
+          sed -i \
+          "s|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}|" \
+          kubernetes-manifests/backend.yml
+
+      - name: Commit Backend Manifest
         run: |
           git config user.name "sandeshjamdar20"
           git config user.email "sandeshjamdar51@gmail.com"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-          git add ../kubernetes-manifests/backend.yml
-          git diff --cached --quiet || git commit -m "ci: update backend image to ${{ steps.get_tag.outputs.next_tag }}"
-          git push
 
+          git add .
+
+          git diff --cached --quiet || \
+          git commit -m "update backend image"
+
+          git push
+```
