@@ -156,4 +156,3 @@ jobs:
           git commit -m "update backend image"
 
           git push
-```
