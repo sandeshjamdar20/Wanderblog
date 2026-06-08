@@ -95,7 +95,7 @@ jobs:
 
       - name: Commit and push updated frontend manifest
         run: |
-          git config user.name "Gauri Shirkande"
+          git config user.name "sandeshjamdar20"
           git config user.email "gaurishirkande11111@gmail.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git add ../kubernetes-manifests/frontend.yml
@@ -153,7 +153,7 @@ jobs:
             ../kubernetes-manifests/backend.yml   # Change to your manifest path
       - name: Commit and push updated backend manifest
         run: |
-          git config user.name "Gauri Shirkande"
+          git config user.name "sandeshjamdar20"
           git config user.email "gaurishirkande11111@gmail.com"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git add ../kubernetes-manifests/backend.yml
