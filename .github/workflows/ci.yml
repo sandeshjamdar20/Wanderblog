@@ -17,7 +17,6 @@ jobs:
 # ==========================================
 # Detect Changes
 # ==========================================
-
   changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
