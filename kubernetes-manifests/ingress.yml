@@ -25,7 +25,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: wanderblog.online
+    - host: jamdarwadi.shop
       http:
         paths:
           - path: /
