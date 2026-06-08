@@ -1,3 +1,4 @@
+```yaml
 name: Build & Push Docker Images to Dockerhub
 
 on:
@@ -14,9 +15,6 @@ env:
 
 jobs:
 
-# ==========================================
-# Detect Changes
-# ==========================================
   changes:
     name: Detect changed paths
     runs-on: ubuntu-latest
@@ -36,23 +34,16 @@ jobs:
           filters: |
             frontend:
               - 'frontend/**'
-
             backend:
               - 'server/**'
 
-# ==========================================
-# FRONTEND
-# ==========================================
-
   frontend:
-    name: Frontend — Test Build Push
+    name: Frontend - Test Build Push
     runs-on: ubuntu-latest
     needs: changes
-
-   if: always()
+    if: always()
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -77,13 +68,12 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
 
       - name: Update Frontend Manifest
         run: |
           sed -i \
-          "s|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}|" \
+          "s|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}|g" \
           kubernetes-manifests/frontend.yml
 
       - name: Commit Frontend Manifest
@@ -93,24 +83,17 @@ jobs:
 
           git add .
 
-          git diff --cached --quiet || \
-          git commit -m "update frontend image"
+          git diff --cached --quiet || git commit -m "update frontend image"
 
           git push
 
-# ==========================================
-# BACKEND
-# ==========================================
-
   backend:
-    name: Backend — Test Build Push
+    name: Backend - Test Build Push
     runs-on: ubuntu-latest
     needs: changes
-
     if: always()
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v5
 
@@ -135,13 +118,12 @@ jobs:
           context: ./server
           file: ./server/Dockerfile
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
 
       - name: Update Backend Manifest
         run: |
           sed -i \
-          "s|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}|" \
+          "s|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}|g" \
           kubernetes-manifests/backend.yml
 
       - name: Commit Backend Manifest
@@ -151,7 +133,7 @@ jobs:
 
           git add .
 
-          git diff --cached --quiet || \
-          git commit -m "update backend image"
+          git diff --cached --quiet || git commit -m "update backend image"
 
           git push
+```
