@@ -36,8 +36,6 @@ jobs:
             backend:
               - 'server/**'
 
-# FRONTEND
-
   frontend:
     name: Frontend Build Push
     runs-on: ubuntu-latest
@@ -70,8 +68,7 @@ jobs:
           context: ./frontend
           file: ./frontend/Dockerfile
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
 
       - name: Update Frontend Manifest
         run: |
@@ -84,16 +81,14 @@ jobs:
           git config user.name "sandeshjamdar20"
           git config user.email "sandeshjamdar51@gmail.com"
 
-          git pull origin main --rebase
-
           git add .
 
           git diff --cached --quiet || \
           git commit -m "update frontend image"
 
-          git push origin main
+          git pull --rebase origin main
 
-# BACKEND
+          git push origin main
 
   backend:
     name: Backend Build Push
@@ -127,8 +122,7 @@ jobs:
           context: ./server
           file: ./server/Dockerfile
           push: true
-          tags: |
-            ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tag.outputs.next_tag }}
 
       - name: Update Backend Manifest
         run: |
@@ -141,11 +135,11 @@ jobs:
           git config user.name "sandeshjamdar20"
           git config user.email "sandeshjamdar51@gmail.com"
 
-          git pull origin main --rebase
-
           git add .
 
           git diff --cached --quiet || \
           git commit -m "update backend image"
+
+          git pull --rebase origin main
 
           git push origin main
