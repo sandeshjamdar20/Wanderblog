@@ -22,7 +22,7 @@ spec:
               topologyKey: topology.kubernetes.io/zone
       containers:
         - name: backend
-          image: skdockerhub2012/wanderblog-backend:v26
+          image: skdockerhub2012/wanderblog-backend:v1
           ports:
             - containerPort: 5000
           envFrom:
