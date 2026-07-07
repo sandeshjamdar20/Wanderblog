@@ -137,8 +137,8 @@ jobs:
 
           git add .
 
-          git diff --cached --quiet || \
-          git commit -m "update backend image"
+          git commit -m "update backend image" || echo "No changes"
+        
 
           git pull --rebase origin main
 
